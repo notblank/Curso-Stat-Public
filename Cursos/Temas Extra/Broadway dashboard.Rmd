@@ -1,0 +1,78 @@
+---
+title: "broadway"
+name: metrics_broadway_revenue
+owner: zert.federico@gmail.com
+
+metrics:
+  usd_gross:
+    title: Total gross (USD)
+    description: Not adjusted for inflation
+  avg_ticket_price:
+    title: Average ticket price (USD)
+    description: Not adjusted for inflation
+  mean_capacity:
+    title: Percentage capacity
+    description: Averagede across weeks in the time period
+dimensions:
+  show:
+    title: Show
+    description: Show's title
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidytuesdayR)
+library(tidyverse)
+library(tidymetrics)
+```
+
+```{r}
+tuesdata <- tidytuesdayR::tt_load(2020, week = 18)
+grosses <- tuesdata$grosses
+```
+```{r}
+shows_summarized <- 
+    grosses %>% 
+        filter(show %in% 
+               c("Hamilton", 
+                 "The Lion King", 
+                 "Rent", 
+                 "Wicked", 
+                 "Harry Potter and the Cursed Child, Parts One and Two", 
+                 "The Book of Mormon")) %>% 
+        mutate(show = str_remove(show, "\\, Parts.*")) %>% 
+        rename(date = week_ending) %>% 
+        cross_by_dimensions(show) %>% # same as group_by??? No, has an all group/level
+        cross_by_periods(periods = c("month", "quarter", "year"), 
+                         windows = c(28)) %>% 
+        summarise(usd_gross = sum(weekly_gross), 
+                  avg_ticket_price = mean(avg_ticket_price), 
+                  mean_capacity = mean(pct_capacity))  %>% 
+        ungroup()
+```
+
+```{r}
+shows_summarized
+```
+
+```{r}
+use_metrics_scaffold(shows_summarized)
+```
+
+```{r}
+show_metrics <- create_metrics(shows_summarized)
+```
+
+```{r}
+show_metrics
+```
+
+```{r}
+library(shinymetrics)
+
+preview_metric(show_metrics)
+```
+
